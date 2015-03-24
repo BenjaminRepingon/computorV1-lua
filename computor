@@ -10,6 +10,8 @@ C = lpeg.C  -- captures a match
 Ct = lpeg.Ct -- a table with all captures from the pattern
 Cp = lpeg.Cp
 Cc = lpeg.Cc
+Ca = lpeg.Ca
+Carg = lpeg.Carg
 
 function split (s, sep)
 	sep = P(sep)
@@ -26,6 +28,10 @@ local function token( id, patt )
 	return Ct( Cc( id ) * C( patt ) )
 end
 
+function anywhere(p)
+	return lpeg.P{ p + 1 * lpeg.V(1) }
+end
+
 function main( ... )
 	if ( arg[1] == nil ) then
 		print('usage: ./computor <equation>');
@@ -34,7 +40,8 @@ function main( ... )
 
 	local equation = arg[1]--:gsub("%s+", "");
 
-	local digit = R('09')
+	local space = S' \n\t'^0
+	local digit = R'09'
 	-- numbers
 	local number_sign = S'+-'^-1
 	local number_decimal = digit ^ 1
@@ -43,16 +50,20 @@ function main( ... )
 	local number = number_sign * token('number', number_hexadecimal + number_float + number_decimal)
 
 	local operator = S'+-*/';
-	local pow = C( number ) * P' * X^' * C( S'012' );
+	local pow = number * P' * X^' * S'012' * space;
 	local equal = S'=';
 
 	slpited = split( equation, equal );
 	-- print_tab( slpited );
 
-	list = Ct( ( 1 - pow )^1 )
+	-- list = Ct( ( 1 - pow )^1 )--Ct(elem * (sep * elem)^0)
+	list = Ct( anywhere( C( pow ) ) );
 
-	-- print( match( list, arg[1] ) );
-	print_tab( match( list, arg[1] ) );
+	res = match( list, slpited[1] );
+
+	print( res );
+	-- print_tab( res[2] );
+	print_tab( match( list, slpited[1] ) );
 
 
 	-- sum = lpeg.Cf(list, sep)
