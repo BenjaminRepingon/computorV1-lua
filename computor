@@ -2,32 +2,82 @@
 
 local lpeg = require"lpeg"
 
--- function main( ... )
--- 	if ( arg[1] == nil ) then
--- 		print('usage: ./computor <equation>');
--- 		return ;
--- 	end
--- 	list = lpeg.R("09")
--- 	print(list);
--- end
+match = lpeg.match -- match a pattern against a string
+P = lpeg.P -- match a string literally
+S = lpeg.S  -- match anything in a set
+R = lpeg.R  -- match anything in a range
+C = lpeg.C  -- captures a match
+Ct = lpeg.Ct -- a table with all captures from the pattern
+Cp = lpeg.Cp
+Cc = lpeg.Cc
 
--- main(arg);
+function split (s, sep)
+	sep = P(sep)
+	local elem = C((1 - sep)^0)
+	local p = Ct(elem * (sep * elem)^0)   -- make a table capture
+	return match(p, s)
+end
+
+function print_tab( tab )
+	for key,value in pairs(tab) do print(key,value) end
+end
+
+local function token( id, patt )
+	return Ct( Cc( id ) * C( patt ) )
+end
+
+function main( ... )
+	if ( arg[1] == nil ) then
+		print('usage: ./computor <equation>');
+		return ;
+	end
+
+	local equation = arg[1]--:gsub("%s+", "");
+
+	local digit = R('09')
+	-- numbers
+	local number_sign = S'+-'^-1
+	local number_decimal = digit ^ 1
+	local number_hexadecimal = P '0' * S 'xX' * R('09', 'AF', 'af') ^ 1
+	local number_float = (digit^1 * P'.' * digit^0 + P'.' * digit^1) * (S'eE' * number_sign * digit^1)^-1
+	local number = number_sign * token('number', number_hexadecimal + number_float + number_decimal)
+
+	local operator = S'+-*/';
+	local pow = C( number ) * P' * X^' * C( S'012' );
+	local equal = S'=';
+
+	slpited = split( equation, equal );
+	-- print_tab( slpited );
+
+	list = Ct( ( 1 - pow )^1 )
+
+	-- print( match( list, arg[1] ) );
+	print_tab( match( list, arg[1] ) );
+
+
+	-- sum = lpeg.Cf(list, sep)
+	-- print( split( arg[1], '=' )[1] );
+	-- print( split( arg[1], '=' )[2] );
+	-- for key,value in pairs(split( arg[1], '=' )) do print(key,value) end
+end
+
+main(arg);
 
 
 -- matches a numeral and captures its numerical value
-number = lpeg.R"09"^1 / tonumber
+-- number = lpeg.R"09"^1 / tonumber
 
--- matches a list of numbers, capturing their values
-list = number * ("+" * number)^1
+-- -- matches a list of numbers, capturing their values
+-- list = number * ("+" * number)^1
 
--- auxiliary function to add two numbers
-function add (acc, newvalue) return acc + newvalue end
+-- -- auxiliary function to add two numbers
+-- function add (acc, newvalue) return acc + newvalue end
 
--- folds the list of numbers adding them
-sum = lpeg.Cf(list, add)
+-- -- folds the list of numbers adding them
+-- sum = lpeg.Cf(list, add)
 
--- example of use
-print(sum:match("10+30,40"))   --> 83
+-- -- example of use
+-- print(sum:match("10+30,40"))   --> 83
 
 -- Lexical Elements
 -- local Space = lpeg.S(" \n\t")^0
