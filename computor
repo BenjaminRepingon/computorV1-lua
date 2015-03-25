@@ -13,10 +13,6 @@ local number_float = (digit^1 * P'.' * digit^0 + P'.' * digit^1) * (S'eE' * numb
 local number = number_sign * (number_hexadecimal + number_float + number_decimal)
 local operator = S'+-*/';
 local pow = C( number ) * P' * X^' * C( S'012' ) * (space + -P(1));
-local equal = S'=';
-
-local right_equation = pow;
--- local right_equation = ( pow * (number_sign * pow) )^1 * P'=' * pow^1
 
 local function	split(s, sep)
 	sep = P(sep)
@@ -29,6 +25,9 @@ local function	simplify( equ )
 	local res = {[0] = 0, [1] = 0, [2] = 0}
 	local i = 1;
 
+	if ( equ == nil ) then
+		return nil;
+	end
 	while equ[i] do
 		local index = tonumber(equ[i + 2]);
 		if ( equ[i] == '-' ) then
@@ -62,13 +61,15 @@ local function print_equ( equ )
 	end
 	if (equ[2] ~= 0) then
 		res = res ..((equ[2] < 0) and '- ' or '+ ')
-		res = res ..math.abs(equ[2])..' * X^2 = 0';
+		res = res ..math.abs(equ[2])..' * X^2 ';
 	end
+	res = res ..'= 0';
 	print(res);
 end
 
 local function resolve_equ( equ )
 	local delta = math.pow(equ[1], 2) - 4 * equ[0] * equ[2];
+	print(delta);
 	if delta > 0 then
 		return 'Discriminant is strictly positive, the two solutions are:\n', (-equ[1] + math.sqrt(delta)) / 2 * equ[2]..'\n', (-equ[1] - math.sqrt(delta)) / 2 * equ[2];
 	elseif delta == 0 then
@@ -82,14 +83,28 @@ local function	main( ... )
 		return ;
 	end
 
-	print( match(right_equation^1, arg[1]) );
-
+	if ( match(pow^1, arg[1]) == nil) then
+		print('bad equation !');
+		return ;
+	end
 	local equation = arg[1]
-	local slpited = split( equation, equal );
+	local slpited = split( equation, '=' );
+	if ( slpited[2] == nil ) then
+		print('bad equation !');
+		return ;
+	end
 	local list = Ct( ( C( number_sign ) * lpeg.P{ pow + 1 * lpeg.V(1) } )^1 );
 	res1 = simplify( match( list, slpited[1] ) )
 	res2 = simplify( match( list, slpited[2] ) )
+	if (res1 == nil or res2 == nil) then
+		print('bad equation !');
+		return ;
+	end
 	local equ = simplify_both( res1, res2 );
+	if ( equ[0] == 0 and equ[1] == 0 and equ[2] == 0 ) then
+		print('All ℝ are possibilities');
+		return ;
+	end
 	print_equ( equ );
 	print ( resolve_equ( equ ) );
 end
