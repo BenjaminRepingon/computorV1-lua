@@ -9,15 +9,15 @@ local digit = R'09'
 local number_sign = S'+-'^-1
 local number_decimal = digit ^ 1
 local number_hexadecimal = P '0' * S 'xX' * R('09', 'AF', 'af') ^ 1
-local number_float = (digit^1 * P'.' * digit^0 + P'.' * digit^1) * (S'eE' * number_sign * digit^1)^-1
+local number_float = (digit^1 * P'.' * digit^0 + P'.' * digit^1 + digit^1 ) * (S'eE' * number_sign * digit^1)^-1
 local number = number_sign * (number_hexadecimal + number_float + number_decimal)
 local operator = S'+-*/';
-local pow = C( number ) * P' * X^' * C( S'012' ) * (space + -P(1));
+local pow = number_sign^-1 * S' '^-1 * C( number ) * P' * ' * S'xX' * P'^' * C( S'012' ) * (space + -P(1));
 
 local function	split(s, sep)
 	sep = P(sep)
 	local elem = C((1 - sep)^0)
-	local p = Ct(elem * (sep * elem)^0)   -- make a table capture
+	local p = Ct(elem * (sep * elem)^0)
 	return match(p, s)
 end
 
@@ -50,7 +50,7 @@ local function	simplify_both( res1, res2 )
 	return res1;
 end
 
-local function print_equ( equ )
+local function	print_equ( equ )
 	res = 'Reduced form: ';
 	if (equ[0] ~= 0) then
 		res = res ..equ[0]..' * X^0 '
@@ -67,13 +67,20 @@ local function print_equ( equ )
 	print(res);
 end
 
-local function resolve_equ( equ )
+local function	resolve_equ( equ )
+	if (equ[2] == 0) then
+		print('Linear degree equation');
+		return -equ[0] / equ[1];
+	end
 	local delta = math.pow(equ[1], 2) - 4 * equ[0] * equ[2];
-	print(delta);
+	print('Quadric degree equation');
+	print('Discriminant: '..delta);
 	if delta > 0 then
 		return 'Discriminant is strictly positive, the two solutions are:\n', (-equ[1] + math.sqrt(delta)) / 2 * equ[2]..'\n', (-equ[1] - math.sqrt(delta)) / 2 * equ[2];
 	elseif delta == 0 then
 		return 'The solution is:\n', -equ[1] / 2 * equ[2];
+	else
+		return 'No ℝ possibilities but two ℂ:\n', (-equ[1] / 2 * equ[2])..' - i'..(math.sqrt(math.abs(delta)) / 2 * equ[2])..'\n', (-equ[1] / 2 * equ[2])..' + i'..(math.sqrt(math.abs(delta)) / 2 * equ[2]);
 	end
 end
 
@@ -83,26 +90,23 @@ local function	main( ... )
 		return ;
 	end
 
-	if ( match(pow^1, arg[1]) == nil) then
-		print('bad equation !');
+	if ( match(pow^1 * S'=' * pow^1 * -P(1), arg[1]) == nil) then
+		print('nop nop bad equation !');
 		return ;
 	end
 	local equation = arg[1]
 	local slpited = split( equation, '=' );
-	if ( slpited[2] == nil ) then
-		print('bad equation !');
-		return ;
-	end
 	local list = Ct( ( C( number_sign ) * lpeg.P{ pow + 1 * lpeg.V(1) } )^1 );
-	res1 = simplify( match( list, slpited[1] ) )
-	res2 = simplify( match( list, slpited[2] ) )
-	if (res1 == nil or res2 == nil) then
-		print('bad equation !');
-		return ;
-	end
+	local res1 = simplify( match( list, slpited[1] ) )
+	local res2 = simplify( match( list, slpited[2] ) )
 	local equ = simplify_both( res1, res2 );
 	if ( equ[0] == 0 and equ[1] == 0 and equ[2] == 0 ) then
+		print('Constant degree equation');
 		print('All ℝ are possibilities');
+		return ;
+	elseif (equ[1] == 0 and equ[2] == 0) then
+		print('Constant degree equation');
+		print('No possibilities');
 		return ;
 	end
 	print_equ( equ );
